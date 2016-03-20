@@ -1,0 +1,16 @@
+
+next 
+  - Pretty output changed to add space before : (like JSON::XS does)
+  - New methods: set_indent(), set_space_before(), set_space_after()
+  - Fix synopsis code
+
+0.03 Nov 24 2012
+  - Add a license to the POD
+
+0.02 Jun 10 2009
+  - Support optional pretty-printing of output
+  - Add documentation about the pretty output option
+
+0.01 May 02 2009
+  - First release to CPAN
+
