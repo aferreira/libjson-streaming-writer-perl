@@ -22,6 +22,9 @@ sub for_stream {
     $self->{used} = 0;
     $self->{pretty} = 0;
     $self->{indent_level} = 0;
+    $self->{indent_space} = '';
+    $self->{space_before} = '';
+    $self->{space_after} = '';
 
     return $self;
 }
@@ -44,9 +47,32 @@ sub pretty_output {
 
     if (@_) {
         $self->{pretty} = $_[0] ? 1 : 0;
+        $self->set_indent($_[0]);
+        $self->set_space_before($_[0]);
+        $self->set_space_after($_[0]);
     }
 
     $self->{pretty};
+}
+
+sub _get_indent {
+    return $_[0]->{indent_space} ? 1 : 0;
+}
+
+sub set_indent {
+    $_[0]->_set_indent_space($_[1] ? "    " : '');
+}
+
+sub _set_indent_space {
+    $_[0]->{indent_space} = $_[1];
+}
+
+sub set_space_before {
+    $_[0]->{space_before} = $_[1] ? ' ' : '';
+}
+
+sub set_space_after {
+    $_[0]->{space_after} = $_[1] ? ' ' : '';
 }
 
 sub start_object {
@@ -70,7 +96,7 @@ sub end_object {
     $self->_make_end_block();
     $self->_pop_state();
     $self->_print("}");
-    $self->_print("\n") if $self->_state == ROOT_STATE && $self->pretty_output;
+    $self->_print("\n") if $self->_state == ROOT_STATE && $self->_get_indent;
 
     $self->_state->{made_value} = 1 unless $self->_state == ROOT_STATE;
 }
@@ -83,7 +109,7 @@ sub start_property {
     $self->_make_separator();
     my $state = $self->_push_state();
     $state->{in_property} = 1;
-    $self->_print($self->_json_string($name), ":");
+    $self->_print($self->_json_string($name), $self->{space_before}, ":");
 }
 
 sub end_property {
@@ -119,7 +145,7 @@ sub end_array {
     $self->_make_end_block();
     $self->_pop_state();
     $self->_print("]");
-    $self->_print("\n") if $self->_state == ROOT_STATE && $self->pretty_output;
+    $self->_print("\n") if $self->_state == ROOT_STATE && $self->_get_indent;
 
     $self->_state->{made_value} = 1 unless $self->_state == ROOT_STATE;
 }
@@ -297,20 +323,18 @@ sub _can_start_property {
 }
 
 sub _make_separator {
-    $_[0]->_print(",") if $_[0]->_made_value;
-    if ($_[0]->pretty_output) {
-        if ($_[0]->_in_property) {
-            $_[0]->_print(" ");
-        }
-        else {
-            $_[0]->_print("\n");
-            $_[0]->_make_indent();
-        }
+    $_[0]->_print(",", $_[0]->{space_after}) if $_[0]->_made_value;
+    if ($_[0]->_in_property) {
+        $_[0]->_print($_[0]->{space_after});
+    }
+    elsif ($_[0]->_get_indent) {
+        $_[0]->_print("\n");
+        $_[0]->_make_indent();
     }
 }
 
 sub _make_end_block {
-    return unless $_[0]->pretty_output;
+    return unless $_[0]->_get_indent;
 
     if ($_[0]->_made_value) {
         $_[0]->_print("\n");
@@ -319,7 +343,7 @@ sub _make_end_block {
 }
 
 sub _make_indent {
-    $_[0]->_print("    " x $_[0]->{indent_level});
+    $_[0]->_print($_[0]->{indent_space} x $_[0]->{indent_level});
 }
 
 sub _indent {
@@ -501,6 +525,14 @@ You can enable and disable pretty-printing during output, though if you do the
 results are likely to be sub-optimal as the additional whitespace may not be
 generated where you'd expect. In particular, where the whitespace is generated
 may change in future versions.
+
+Finer control can be achieved with the methods:
+
+    set_indent($enable) - enable a multiline format with proper indentation
+    set_space_before($enable) - extra optional space before :
+    set_space_after($enable) - extra optional space after : and ,
+
+They work as the analogous JSON::XS methods: indent(), space_before() and space_after().
 
 =head1 INTERNALS
 
